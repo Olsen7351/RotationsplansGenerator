@@ -190,3 +190,109 @@
 
                 // Find de resterende ledige pladser for dagen
                 slotsForDay.forEach(slot => {
+                    const assignedPeopleInSlot = weekPlan[day][slot] || [];
+                    const capacity = slot === '470' ? 3 : 1;
+                    if (assignedPeopleInSlot.length < capacity) {
+                        remainingSlots.push(slot);
+                    }
+                });
+
+                // Tildel de resterende personer til de resterende pladser
+                for (const slot of remainingSlots) {
+                    let assignedPerson = null;
+                    const shuffledPeople = shuffle(peopleToPlace);
+
+                    for (const person of shuffledPeople) {
+                        if (!weeklyAssignments[person].includes(slot)) {
+                            assignedPerson = person;
+                            break;
+                        }
+                    }
+                    if (assignedPerson === null) {
+                        assignedPerson = shuffledPeople[0];
+                    }
+                    
+                    weekPlan[day][slot].push(assignedPerson);
+                    weeklyAssignments[assignedPerson].push(slot);
+                    peopleToPlace = peopleToPlace.filter(p => p !== assignedPerson);
+                }
+            }
+            return weekPlan;
+        }
+
+        function generateAndDisplayPlan() {
+            let fullHtml = '<h2>Rotationsplan for 4 uger</h2>';
+            fullHtml += '<div id="pdf-page-1">';
+            for (let i = 1; i <= 4; i++) {
+                if (i === 3) {
+                    fullHtml += '</div><hr><div id="pdf-page-2">';
+                }
+                const weekPlan = generateWeekPlan();
+                fullHtml += `<h3>Uge ${i}</h3>`;
+                fullHtml += `<table><thead><tr><th>Område</th><th>Mandag</th><th>Tirsdag</th><th>Onsdag</th><th>Torsdag</th><th>Fredag</th></tr></thead><tbody>`;
+                const displayAreas = ['470', '540', '1010', '18E', 'FLY'];
+                for (const area of displayAreas) {
+                    fullHtml += `<tr><td><b>${area}</b></td>`;
+                    for (const day of daysOfWeek) {
+                        fullHtml += `<td>${weekPlan[day][area].join(', ')}</td>`;
+                    }
+                    fullHtml += `</tr>`;
+                }
+                fullHtml += `</tbody></table>`;
+            }
+            fullHtml += '</div>';
+            document.getElementById('plan-container').innerHTML = fullHtml;
+        }
+        
+        async function exportToPDF() {
+            const page1 = document.getElementById('pdf-page-1');
+            const page2 = document.getElementById('pdf-page-2');
+            const pdfBtn = document.getElementById('pdfBtn');
+            const originalButtonText = pdfBtn.innerHTML;
+
+            if (!page1 || !page2) {
+                alert("Kunne ikke finde planens indhold. Prøv at generere en ny plan først.");
+                return;
+            }
+
+            pdfBtn.innerHTML = "Forbereder PDF...";
+            pdfBtn.disabled = true;
+
+            try {
+                const [canvas1, canvas2] = await Promise.all([
+                    window.html2canvas(page1, { scale: 2 }),
+                    window.html2canvas(page2, { scale: 2 })
+                ]);
+                
+                const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                const addImageToPdf = (canvas, pdfInstance) => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdfWidth = pdfInstance.internal.pageSize.getWidth();
+                    const pdfHeight = pdfInstance.internal.pageSize.getHeight();
+                    const margin = 15;
+                    const imgWidth = pdfWidth - (margin * 2);
+                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                    if (imgHeight > pdfHeight - (margin * 2)) {
+                         console.warn("Indholdet er for højt til en enkelt side. Det kan blive beskåret.");
+                    }
+                    pdfInstance.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
+                };
+
+                addImageToPdf(canvas1, pdf);
+                pdf.addPage();
+                addImageToPdf(canvas2, pdf);
+                
+                pdf.save('rotationsplan_4_uger.pdf');
+
+            } catch (err) {
+                console.error("Fejl ved oprettelse af PDF:", err);
+                alert("Der opstod en fejl under oprettelse af PDF'en. Tjek konsollen for detaljer.");
+            } finally {
+                pdfBtn.innerHTML = originalButtonText;
+                pdfBtn.disabled = false;
+            }
+        }
+    </script>
+
+</body>
+</html>
