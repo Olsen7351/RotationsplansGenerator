@@ -14,7 +14,7 @@
             padding: 0 20px;
             background-color: #f9f9f9;
         }
-        h1, h2, h3 {
+        h1, h2 {
             color: #1a237e;
         }
         h1 {
@@ -22,16 +22,14 @@
             border-bottom: 2px solid #3f51b5;
             padding-bottom: 10px;
         }
-        h3 {
-            margin-top: 30px;
-            border-bottom: 1px solid #c5cae9;
-            padding-bottom: 5px;
+        h2 {
+            padding: 0 20px;
         }
         table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         th, td {
             border: 1px solid #ddd;
@@ -81,12 +79,62 @@
         }
         .ok { color: #2e7d32; font-weight: bold; }
         .error { color: #c62828; font-weight: bold; }
+
+        /* --- DROPDOWN STYLES ONLY FOR SUMMARY SECTION --- */
+        .collapsible {
+            background-color: #e8eaf6;
+            color: #1a237e;
+            cursor: pointer;
+            padding: 18px;
+            width: 100%;
+            border: none;
+            border-top: 1px solid #c5cae9;
+            text-align: left;
+            outline: none;
+            font-size: 1.2em;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        #summary-container .collapsible:first-of-type {
+            border-top: none;
+        }
+        .collapsible:hover {
+            background-color: #c5cae9;
+        }
+        .collapsible::after {
+            content: 'Open'; /* Plus tegn */
+            color: #1a237e;
+            font-weight: bold;
+            float: right;
+            margin-left: 5px;
+        }
+        .collapsible.active::after {
+            content: "Close"; /* Minus tegn */
+        }
+        .collapsible-content {
+            padding: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.2s ease-out;
+            background-color: #fff;
+        }
+        
+        /* Weekly plan styling */
+        .week-section {
+            margin-bottom: 30px;
+        }
+        .week-section h3 {
+            color: #1a237e;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #c5cae9;
+        }
     </style>
 </head>
 <body onload="generateAndDisplayPlan()">
 
     <h1>Ugentlig Rotationsplan Generator</h1>
-    
+
     <div id="plan-container">
         <p>Genererer plan...</p>
     </div>
@@ -105,7 +153,7 @@
         const people = ['Bettina', 'Gosia', 'Hanne', 'Andreas', 'Marc', 'Charlotte', 'Jette'];
         const facilities = ['470', '540', '1010', '18E', 'FLY'];
         const facilitySlots = { '470': 3, '540': 1, '1010': 1, 'FLY': 1, '18E': 1 };
-        const prioritizedFacilities = ['18E', 'FLY', '1010', '540', '470']; 
+        const prioritizedFacilities = ['18E', 'FLY', '1010', '540', '470'];
         const daysOfWeek = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag'];
         const totalDays = 20;
 
@@ -123,59 +171,50 @@
 
         /**
          * Hovedfunktionen, der forsøger at generere en gyldig plan.
-         * Den bygger planen uge for uge for at overholde reglerne.
          */
         function tryToGeneratePlan() {
             const assignments = Array.from({ length: totalDays }, () => ({
                 '470': [], '540': [], '1010': [], 'FLY': [], '18E': []
             }));
 
-            // --- REGELEfterlevelse: Byg planen uge for uge ---
             for (let week = 0; week < 4; week++) {
                 const weekStartDayIndex = week * 5;
                 const weekDayIndexes = Array.from({ length: 5 }, (_, i) => weekStartDayIndex + i);
 
-                // TRIN 1: Placer Jette 2 gange på 18E i denne uge
                 const jetteDays = shuffle(weekDayIndexes).slice(0, 2);
                 for (const dayIndex of jetteDays) {
                     assignments[dayIndex]['18E'].push('Jette');
                 }
-                
-                // TRIN 2: Placer Bettina 5 dage i denne uge med sine regler
+
                 let lastBettinaFacility = null;
                 const bettinaFacilityPlacements = new Set();
-
                 for (const dayIndex of weekDayIndexes) {
                     const assignedPeopleToday = [].concat(...Object.values(assignments[dayIndex]));
                     if (assignedPeopleToday.includes('Bettina')) {
-                         throw new Error(`Planlægningskonflikt: Bettina er allerede placeret på dag ${dayIndex + 1}. Dette bør ikke ske.`);
+                         throw new Error(`Planlægningskonflikt: Bettina er allerede placeret på dag ${dayIndex + 1}.`);
                     }
 
                     let potentialFacilities = shuffle(facilities);
-                    // Fjern stationen fra i går
                     if (lastBettinaFacility) {
                         potentialFacilities = potentialFacilities.filter(f => f !== lastBettinaFacility);
                     }
-                    // Fjern stationer, der allerede er fuldt besatte af andre (f.eks. Jette på 18E)
                     potentialFacilities = potentialFacilities.filter(f => assignments[dayIndex][f].length === 0);
 
                     if (potentialFacilities.length === 0) {
                         throw new Error(`Kunne ikke finde en gyldig station til Bettina på dag ${dayIndex + 1}.`);
                     }
-                    
+
                     const facilityForBettina = potentialFacilities[0];
                     assignments[dayIndex][facilityForBettina].push('Bettina');
                     lastBettinaFacility = facilityForBettina;
                     bettinaFacilityPlacements.add(facilityForBettina);
                 }
 
-                // Valider Bettinas uge med det samme
                 if (bettinaFacilityPlacements.size < 4) {
                     throw new Error(`Uge ${week + 1}: Bettina dækkede kun ${bettinaFacilityPlacements.size} stationer. Reglen kræver min. 4.`);
                 }
             }
 
-            // --- TRIN 3: Fyld alle resterende pladser for alle 20 dage ---
             for (let dayIndex = 0; dayIndex < totalDays; dayIndex++) {
                 const assignedToday = [].concat(...Object.values(assignments[dayIndex]));
                 const availablePeople = shuffle(people.filter(p => !assignedToday.includes(p)));
@@ -183,7 +222,7 @@
                 for (const facility of prioritizedFacilities) {
                     const needed = facilitySlots[facility];
                     const current = assignments[dayIndex][facility].length;
-                    
+
                     for (let i = 0; i < (needed - current); i++) {
                         if (availablePeople.length === 0) {
                             throw new Error(`Planlægningskonflikt på dag ${dayIndex + 1}: Ikke flere ledige personer.`);
@@ -191,7 +230,6 @@
 
                         let personToAssign;
                         if (facility === '18E') {
-                            // Find en person, der ikke er Charlotte
                             const validPersonIndex = availablePeople.findIndex(p => p !== 'Charlotte');
                             if (validPersonIndex === -1) {
                                 throw new Error(`Planlægningskonflikt på dag ${dayIndex + 1}: Kun Charlotte er ledig til 18E.`);
@@ -200,12 +238,11 @@
                         } else {
                             personToAssign = availablePeople.shift();
                         }
-                        
+
                         assignments[dayIndex][facility].push(personToAssign);
                     }
                 }
             }
-            
             return assignments;
         }
 
@@ -214,7 +251,7 @@
          */
         function generateGuaranteedPlan() {
             let attempts = 0;
-            const maxAttempts = 500; // Forhindrer uendelige loops
+            const maxAttempts = 500;
             while (attempts < maxAttempts) {
                 try {
                     return tryToGeneratePlan();
@@ -227,9 +264,27 @@
                 }
             }
         }
-        
+
         /**
-         * Genererer og viser planen samt en ugentlig validering af reglerne.
+         * Tilføjer event listeners for at gøre sektioner sammenklappelige.
+         */
+        function addCollapsibleEventListeners() {
+            const coll = document.getElementsByClassName("collapsible");
+            for (let i = 0; i < coll.length; i++) {
+                coll[i].addEventListener("click", function() {
+                    this.classList.toggle("active");
+                    const content = this.nextElementSibling;
+                    if (content.style.maxHeight) {
+                        content.style.maxHeight = null;
+                    } else {
+                        content.style.maxHeight = content.scrollHeight + "px";
+                    }
+                });
+            }
+        }
+
+        /**
+         * Genererer og viser planen samt en ugentlig validering.
          */
         function generateAndDisplayPlan() {
             try {
@@ -237,8 +292,9 @@
                 let planHtml = '<h2>Rotationsplan for 4 uger</h2>';
                 let summaryHtml = '<h2>Ugentlig Regel-check</h2>';
 
-                // Vis ugeplaner
+                // Vis ugeplaner - nu uden dropdown
                 for (let week = 0; week < 4; week++) {
+                    planHtml += `<div class="week-section">`;
                     planHtml += `<h3>Uge ${week + 1}</h3>`;
                     planHtml += `<table><thead><tr><th>Område</th>${daysOfWeek.map(day => `<th>${day}</th>`).join('')}</tr></thead><tbody>`;
                     for (const area of facilities) {
@@ -249,14 +305,15 @@
                         }
                         planHtml += `</tr>`;
                     }
-                    planHtml += `</tbody></table>`;
+                    planHtml += `</tbody></table></div>`;
                 }
-                
                 document.getElementById('plan-container').innerHTML = planHtml;
 
-                // --- VIS VALIDERINGS-SUMMARY FOR HVER UGE ---
-                 for (let week = 0; week < 4; week++) {
-                    summaryHtml += `<h3>Uge ${week + 1}</h3>`;
+                // Vis validerings-summary for hver uge - med dropdown
+                for (let week = 0; week < 4; week++) {
+                    summaryHtml += `<button type="button" class="collapsible">Regel-check: Uge ${week + 1}</button>`;
+                    summaryHtml += `<div class="collapsible-content" style="padding: 18px;">`;
+
                     const weekStartDayIndex = week * 5;
                     let weeklyIssues = [];
 
@@ -268,20 +325,19 @@
                             break;
                         }
                     }
-                    summaryHtml += `<p><b>Charlotte ikke i 18E:</b> ${!charlotteIn18E ? '<span class="ok">OK</span>' : '<span class="error">FEJL</span>'}</p>`;
-                    
+                    summaryHtml += `<p><b>Charlotte i 18E:</b> ${!charlotteIn18E ? '<span class="ok">OK</span>' : '<span class="error">FEJL</span>'}</p>`;
+
                     // 2. Jette check
                     let jetteDaysIn18E = 0;
                      for (let i = 0; i < 5; i++) {
                         if (fullPlan[weekStartDayIndex + i]['18E'].includes('Jette')) jetteDaysIn18E++;
                     }
                     summaryHtml += `<p><b>Jette i 18E:</b> ${jetteDaysIn18E === 2 ? `<span class="ok">OK (${jetteDaysIn18E} dage)</span>` : `<span class="error">FEJL (${jetteDaysIn18E} dage)</span>`}</p>`;
-                    
+
                     // 3. Bettina check
                     const bettinaPlacements = new Map();
                     let bettinaConsecutiveError = false;
                     let lastFacility = null;
-
                     for (let i = 0; i < 5; i++) {
                          for (const facility in fullPlan[weekStartDayIndex + i]) {
                             if (fullPlan[weekStartDayIndex + i][facility].includes('Bettina')) {
@@ -294,12 +350,15 @@
                     const uniqueStations = bettinaPlacements.size;
                     const bettinaRuleMet = uniqueStations >= 4 && !bettinaConsecutiveError;
                     summaryHtml += `<p><b>Bettinas Rotation:</b> ${bettinaRuleMet ? '<span class="ok">OK</span>' : '<span class="error">FEJL</span>'} <br><small>Unikke stationer: ${uniqueStations}, Samme station i streg: ${bettinaConsecutiveError ? 'Ja' : 'Nej'}</small></p>`;
+                    summaryHtml += `</div>`;
                 }
-
                 document.getElementById('summary-container').innerHTML = summaryHtml;
 
+                // Tilføj funktionalitet kun til regel-check knapperne
+                addCollapsibleEventListeners();
+
             } catch(e) {
-                document.getElementById('plan-container').innerHTML = `<p class="error">Fejl under generering af plan: ${e.message} Prøv venligst igen.</p>`;
+                document.getElementById('plan-container').innerHTML = `<h2>Rotationsplan for 4 uger</h2><p class="error" style="padding: 0 20px;">Fejl under generering af plan: ${e.message} Prøv venligst igen.</p>`;
                 document.getElementById('summary-container').innerHTML = '';
             }
         }
