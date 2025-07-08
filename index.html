@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ugentlig Rotationsplan Generator</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
     <h1>Ugentlig Rotationsplan Generator</h1>
@@ -17,6 +18,8 @@
     </div>
 
     <button onclick="app.generateAndDisplayPlan()">🔄 Generer ny 4-ugers plan</button>
+    <button onclick="app.exportPlanToPDF()">⬇️ Download plan som PDF</button>
+
 
     <div class="footer">
         <p>Generatoren bygger planen uge for uge for at overholde de specificerede regler.</p>

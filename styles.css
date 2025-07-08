@@ -148,3 +148,16 @@ button:hover {
     padding-bottom: 5px;
     border-bottom: 1px solid #c5cae9;
 }
+@media print {
+    button, .footer {
+        display: none;
+    }
+
+    body {
+        background: white;
+    }
+
+    #plan-container, #summary-container {
+        box-shadow: none;
+    }
+}
